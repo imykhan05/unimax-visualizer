@@ -69,6 +69,24 @@ screen pe aa jaata hai aur app jaisi lagti hai.
 
 ---
 
+## Themes
+
+App ki 8 colour schemes hain — 6 dark aur 2 light:
+
+Midnight Navy · Graphite Amber · Deep Forest · Royal Plum · Terracotta Clay ·
+Ocean Teal · Daylight · Sandstone
+
+Toolbar ke theme button se koi bhi choose karo. Saath wala 🔄 button **auto
+mode** hai — har 45 second baad agli theme aa jaati hai; ⏸ dabao to jo theme
+chal rahi hai wahi ruk jayegi. Aapki pasand browser mein yaad rehti hai.
+
+Saari themes ek hi token set define karti hain (`src/data/themes.js`), aur
+stylesheet sirf un tokens ko use karti hai — is liye nayi theme add karne ke
+liye bas ek entry likhni parti hai. Har theme ke text/background jode WCAG AA
+contrast pe check kiye gaye hain.
+
+---
+
 ## Android APK
 
 App Capacitor ke saath wrap ki gayi hai, aur APK GitHub Actions par build hoti
@@ -103,11 +121,17 @@ cd android && ./gradlew assembleDebug
 
 ## How to Use
 
-1. Image upload karo (ghar ya building ki photo)
-2. Left se Unimax shade select karo
-3. Wall pe click karo → color apply ho jayega
-4. Multiple walls pe alag alag colors lagao
-5. PDF ya Image download karo
+1. **Image upload karo** — ghar ya building ki photo
+2. **Left se shade select karo**
+3. **Photo pe us jagah click karo** jahan wo shade chahiye → wahan ek numbered
+   pin lag jayega (color abhi nahi lagega)
+4. **Doosri shade select karo, doosri jagah click karo** — jitni marzi jaga,
+   har jagah alag shade
+5. **Generate dabao** → saari jagahon pe ek saath colors lag jayenge
+6. **PDF ya Image download karo**
+
+Pin galat lag gaya? Us pin pe click kar do, hat jayega — ya right panel se `✕`.
+`Clear Pins` sab pins hata deta hai.
 
 ### Tips
 
@@ -127,8 +151,9 @@ cd android && ./gradlew assembleDebug
 |---|---|
 | Upload | Drag & drop ya click — JPG, PNG, WEBP, max 10MB, auto-resize 900×640 |
 | Shades | Poori Unimax Wall Emulsion shade card — 28 shades, search by name ya code |
-| Painting | Click pe flood fill + LAB blend — texture, shadow aur grain preserved |
-| Multi-zone | Har click ek alag zone; alag walls pe alag shades |
+| Painting | Pin lagao → Generate → flood fill + LAB blend, texture aur shadow preserved |
+| Multi-zone | Jitni marzi jaga, har jagah apni shade — sab ek saath apply |
+| Themes | 8 colour schemes, auto har 45 second badalti hain (pause bhi ho sakti hai) |
 | Undo/Redo | Full history, keyboard shortcuts ke saath |
 | Export | PNG canvas download + A4 PDF report (before/after + shade table) |
 | Zoom | Zoom in/out + fit to screen |

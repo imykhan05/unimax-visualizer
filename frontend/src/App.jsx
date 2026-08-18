@@ -3,7 +3,9 @@ import ShadePanel from './components/ShadePanel.jsx';
 import Canvas from './components/Canvas.jsx';
 import Toolbar from './components/Toolbar.jsx';
 import AppliedPanel from './components/AppliedPanel.jsx';
+import ThemeSwitcher from './components/ThemeSwitcher.jsx';
 import { exportReportPdf, downloadCanvasPng } from './utils/pdfExport.js';
+import { THEMES, DEFAULT_THEME, ROTATE_MS, applyTheme } from './data/themes.js';
 
 const MAX_W = 900;
 const MAX_H = 640;
@@ -43,6 +45,7 @@ export default function App() {
   const [fileInfo, setFileInfo] = useState(null);
   const [selectedShade, setSelectedShade] = useState(null);
   const [zones, setZones] = useState([]);
+  const [pins, setPins] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const [tolerance, setTolerance] = useState(40);
   const [zoom, setZoom] = useState(1);
@@ -53,6 +56,12 @@ export default function App() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [notes, setNotes] = useState('');
+  const [themeKey, setThemeKey] = useState(
+    () => localStorage.getItem('unimax.theme') || DEFAULT_THEME,
+  );
+  const [autoTheme, setAutoTheme] = useState(
+    () => localStorage.getItem('unimax.autoTheme') !== 'off',
+  );
 
   const canvasApi = useRef(null);
   const originalUrlRef = useRef(null);
@@ -62,6 +71,25 @@ export default function App() {
     window.clearTimeout(notify._t);
     notify._t = window.setTimeout(() => setToast(null), 3200);
   }, []);
+
+  // Apply the active theme and remember it.
+  useEffect(() => {
+    applyTheme(themeKey);
+    localStorage.setItem('unimax.theme', themeKey);
+  }, [themeKey]);
+
+  // Auto-rotate through the palettes; pausing sticks on the current one.
+  useEffect(() => {
+    localStorage.setItem('unimax.autoTheme', autoTheme ? 'on' : 'off');
+    if (!autoTheme) return undefined;
+    const id = setInterval(() => {
+      setThemeKey((current) => {
+        const i = THEMES.findIndex((t) => t.key === current);
+        return THEMES[(i + 1) % THEMES.length].key;
+      });
+    }, ROTATE_MS);
+    return () => clearInterval(id);
+  }, [autoTheme]);
 
   const handleUpload = useCallback(
     async (file) => {
@@ -78,6 +106,7 @@ export default function App() {
         setImage(img);
         setFileInfo({ name: file.name, width: img.naturalWidth, height: img.naturalHeight });
         setZones([]);
+        setPins([]);
         setRedoStack([]);
         setZoom(1);
         originalUrlRef.current = img.src;
@@ -89,10 +118,45 @@ export default function App() {
     [notify],
   );
 
-  const handleZoneCreated = useCallback((zone) => {
-    setZones((prev) => [...prev, zone]);
-    setRedoStack([]);
+  const addPin = useCallback((pin) => {
+    setPins((prev) => [...prev, pin]);
   }, []);
+
+  const removePin = useCallback((id) => {
+    setPins((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  const clearPins = useCallback(() => setPins([]), []);
+
+  /** Paint every pending pin in one pass, then clear the pins. */
+  const generate = useCallback(() => {
+    if (!pins.length) return;
+    setBusy(true);
+    // Yield a frame so the progress indicator paints before the fills start.
+    requestAnimationFrame(() => {
+      try {
+        const { zones: built, skipped } = canvasApi.current?.buildZones(pins) || {
+          zones: [],
+          skipped: [],
+        };
+        if (built.length) {
+          setZones((prev) => [...prev, ...built]);
+          setRedoStack([]);
+        }
+        setPins(skipped);
+        if (skipped.length) {
+          notify(
+            `${built.length} jaga color lag gaya. ${skipped.length} point pe area nahi mila — tolerance barhao.`,
+            skipped.length === pins.length ? 'error' : 'info',
+          );
+        } else {
+          notify(`${built.length} jaga par color lag gaya.`, 'success');
+        }
+      } finally {
+        setBusy(false);
+      }
+    });
+  }, [pins, notify]);
 
   const undo = useCallback(() => {
     setZones((prev) => {
@@ -118,6 +182,7 @@ export default function App() {
 
   const doReset = useCallback(() => {
     setZones([]);
+    setPins([]);
     setRedoStack([]);
     setConfirmReset(false);
     notify('Sab zones hat gaye — original photo wapas.', 'success');
@@ -215,6 +280,17 @@ export default function App() {
         onZoomFit={zoomFit}
         onOpenDrawer={() => setDrawerOpen(true)}
         busy={busy}
+        pinCount={pins.length}
+        onGenerate={generate}
+        onClearPins={clearPins}
+        themeControl={
+          <ThemeSwitcher
+            themeKey={themeKey}
+            onPick={setThemeKey}
+            auto={autoTheme}
+            onToggleAuto={() => setAutoTheme((v) => !v)}
+          />
+        }
       />
 
       <main className="layout">
@@ -260,23 +336,29 @@ export default function App() {
                 ref={canvasApi}
                 image={image}
                 zones={zones}
+                pins={pins}
                 zoom={zoom}
                 tolerance={tolerance}
                 selectedShade={selectedShade}
-                onZoneCreated={handleZoneCreated}
+                onPinAdded={addPin}
+                onPinRemove={removePin}
                 onNeedShade={() => {
                   notify('Pehle left se koi shade select karo.', 'error');
                   setDrawerOpen(true);
                 }}
-                onBusyChange={setBusy}
               />
-              {busy && <div className="processing">Applying…</div>}
+              {busy && <div className="processing">Colors laga rahe hain…</div>}
             </>
           )}
         </section>
 
         <AppliedPanel
           zones={zones}
+          pins={pins}
+          onPinRemove={removePin}
+          onGenerate={generate}
+          onClearPins={clearPins}
+          busy={busy}
           onRemove={removeZone}
           customerName={customerName}
           onCustomerName={setCustomerName}

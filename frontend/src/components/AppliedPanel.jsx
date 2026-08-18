@@ -2,6 +2,11 @@ import { contrastText } from '../utils/colorBlend.js';
 
 export default function AppliedPanel({
   zones,
+  pins = [],
+  onPinRemove,
+  onGenerate,
+  onClearPins,
+  busy,
   onRemove,
   customerName,
   onCustomerName,
@@ -18,8 +23,51 @@ export default function AppliedPanel({
         </div>
       </header>
 
+      {pins.length > 0 && (
+        <div className="pending">
+          <div className="pending-head">
+            <strong>{pins.length} jagah chuni hui</strong>
+            <button className="link-btn" onClick={onClearPins}>
+              clear
+            </button>
+          </div>
+          <div className="pending-list">
+            {pins.map((pin, i) => (
+              <div className="zone-row" key={pin.id}>
+                <span className="zone-index pin-index">{i + 1}</span>
+                <span className="swatch zone-swatch" style={{ background: pin.shade.hex }} />
+                <span className="zone-meta">
+                  <span className="shade-name">{pin.shade.name}</span>
+                  <span className="shade-code">
+                    {pin.shade.code} · tolerance {pin.tolerance}
+                  </span>
+                </span>
+                <button
+                  className="zone-remove"
+                  onClick={() => onPinRemove(pin.id)}
+                  aria-label={`Remove pin ${i + 1}`}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-generate full" onClick={onGenerate} disabled={busy}>
+            ✦ Generate — colors lagao
+          </button>
+        </div>
+      )}
+
       <div className="zone-list">
-        {!zones.length && <p className="empty-note">Abhi koi shade apply nahi hui.</p>}
+        {!zones.length && !pins.length && (
+          <p className="empty-note">
+            Image pe jis deewar pe color chahiye wahan click karo, shade chuno, phir
+            Generate dabao.
+          </p>
+        )}
+        {!zones.length && pins.length > 0 && (
+          <p className="empty-note">Generate dabate hi ye colors lag jayenge.</p>
+        )}
         {zones.map((zone, i) => {
           const pct = imageArea ? ((zone.pixels / imageArea) * 100).toFixed(1) : null;
           return (

@@ -19,6 +19,10 @@ export default function Toolbar({
   onZoomFit,
   onOpenDrawer,
   busy,
+  pinCount,
+  onGenerate,
+  onClearPins,
+  themeControl,
 }) {
   const inputRef = useRef(null);
 
@@ -36,6 +40,7 @@ export default function Toolbar({
           </div>
         </div>
         <div className="spacer" />
+        {themeControl}
         <input
           ref={inputRef}
           type="file"
@@ -54,6 +59,20 @@ export default function Toolbar({
 
       {hasImage && (
         <div className="toolbar-row toolbar-tools">
+          <div className="tool-group generate-group">
+            <button
+              className="btn btn-generate"
+              onClick={onGenerate}
+              disabled={!pinCount || busy}
+              title={pinCount ? `${pinCount} point pe color lagao` : 'Pehle image pe click kar ke jagah chuno'}
+            >
+              ✦ Generate{pinCount ? ` (${pinCount})` : ''}
+            </button>
+            <button className="btn" onClick={onClearPins} disabled={!pinCount}>
+              Clear Pins
+            </button>
+          </div>
+
           <div className="tool-group">
             <button className="btn" onClick={onUndo} disabled={!canUndo} title="Ctrl+Z">
               ↩ Undo

@@ -1,0 +1,11 @@
+{
+  "appId": "pk.unimaxpaints.visualizer",
+  "appName": "Unimax Visualizer",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

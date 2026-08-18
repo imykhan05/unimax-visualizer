@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Unimax Visualizer</string>
+    <string name="title_activity_main">Unimax Visualizer</string>
+    <string name="package_name">pk.unimaxpaints.visualizer</string>
+    <string name="custom_url_scheme">pk.unimaxpaints.visualizer</string>
+</resources>

@@ -1,0 +1,90 @@
+name: Build Android APK
+
+# GitHub's runners ship the Android SDK, so the APK is built here and attached
+# to a release — that gives a stable download link for installing on a phone.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['**']
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Capacitor 6 / Android Gradle Plugin 8.x require JDK 17.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Sync web build into the Android project
+        run: npx cap sync android
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon assembleDebug
+        working-directory: frontend/android
+
+      - name: Name the APK
+        id: apk
+        run: |
+          src=android/app/build/outputs/apk/debug/app-debug.apk
+          test -f "$src" || { echo "APK not found at $src"; exit 1; }
+          mkdir -p ../out
+          cp "$src" ../out/unimax-visualizer.apk
+          echo "size=$(du -h ../out/unimax-visualizer.apk | cut -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unimax-visualizer-apk
+          path: out/unimax-visualizer.apk
+          if-no-files-found: error
+
+      # A release asset is a plain https link — shareable, and installable on a
+      # phone without a GitHub login (unlike workflow artifacts).
+      - name: Publish to the rolling "apk-latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: .
+        run: |
+          gh release view apk-latest >/dev/null 2>&1 \
+            || gh release create apk-latest \
+                 --title "Unimax Visualizer APK" \
+                 --notes "Latest debug build. Install on Android: allow 'Install unknown apps', then open the .apk." \
+                 --target "$GITHUB_SHA"
+          gh release upload apk-latest out/unimax-visualizer.apk --clobber
+
+      - name: Summary
+        run: |
+          {
+            echo "### APK ready (${{ steps.apk.outputs.size }})"
+            echo ""
+            echo "Download: https://github.com/${GITHUB_REPOSITORY}/releases/download/apk-latest/unimax-visualizer.apk"
+          } >> "$GITHUB_STEP_SUMMARY"

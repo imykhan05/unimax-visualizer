@@ -11,11 +11,14 @@
     "build:single": "vite build --config vite.config.single.js"
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
     "jspdf": "^2.5.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.2.1",
     "@vitejs/plugin-react": "^4.3.4",
     "vite": "^6.0.7",
     "vite-plugin-singlefile": "^2.1.0"

@@ -1,0 +1,103 @@
+name: Publish public site
+
+# Publishes the app plus the APK download page to GitHub Pages — a permanent
+# public URL that needs no login and no machine left running.
+#
+# Pages must be enabled first (Settings → Pages → Source: GitHub Actions). On a
+# free plan that also means the repository has to be public. Until then the
+# deploy is skipped rather than failed, so this never reddens the build.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['**']
+    paths:
+      - 'frontend/**'
+      - 'site-src/**'
+      - 'scripts/build-site.mjs'
+      - '.github/workflows/pages.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.probe.outputs.enabled }}
+    steps:
+      - id: probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${GITHUB_REPOSITORY}/pages" >/dev/null 2>&1; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Pages deploy skipped"
+              echo ""
+              echo "GitHub Pages is not enabled for this repository yet."
+              echo "Enable it under **Settings → Pages → Source: GitHub Actions**"
+              echo "(on a free plan the repository must be public), then re-run."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  deploy:
+    needs: check
+    if: needs.check.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build the web app
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+      # Reuse the APK already published by the Android workflow instead of
+      # spending two minutes rebuilding it here. If it is missing, the download
+      # page hides that button on its own.
+      - name: Fetch the latest APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p out
+          gh release download apk-latest --pattern 'unimax-visualizer.apk' --dir out \
+            || echo "No apk-latest release asset yet — the site will ship without it."
+
+      - name: Assemble the site
+        run: node scripts/build-site.mjs
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Summary
+        run: |
+          {
+            echo "### Site published"
+            echo ""
+            echo "App: ${{ steps.deployment.outputs.page_url }}"
+            echo ""
+            echo "Download page: ${{ steps.deployment.outputs.page_url }}download.html"
+          } >> "$GITHUB_STEP_SUMMARY"

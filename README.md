@@ -36,19 +36,53 @@ Dono terminals alag rakho — backend aur frontend saath saath chalte hain.
 
 ---
 
-## Mobile Access via Cloudflare Tunnel
+## Sab ko link do (Cloudflare Tunnel)
+
+Ek command — app aur APK download page dono public ho jaate hain. Jis ko link
+bhejo ge use **koi login nahi** karna parega:
 
 ```bash
-# Install cloudflared (one time): https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
-cloudflared tunnel --url http://localhost:5173
-# Copy the https://xxxxx.trycloudflare.com URL → open on any mobile
+# cloudflared ek baar install karo:
+#   macOS    brew install cloudflared
+#   Windows  winget install --id Cloudflare.cloudflared
+#   Linux    https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+
+./scripts/share.sh
 ```
 
-Tunnel command ek `https://xxxxx.trycloudflare.com` URL print karega. Wahi URL kisi bhi
-mobile browser mein kholo — app touch ke saath chalti hai (tap karke color lagao).
+Ye khud build karta hai, site banata hai, server chalata hai, aur tunnel khol kar
+ek `https://xxxxx.trycloudflare.com` link deta hai:
 
-Agar backend endpoints bhi mobile se chahiye, to Vite already `/api` ko
-`localhost:8000` pe proxy karta hai, is liye sirf frontend ka tunnel kaafi hai.
+| | |
+|---|---|
+| `<link>/` | app — seedha chalti hai |
+| `<link>/download.html` | APK download + install steps + share link |
+
+APK bhi is page pe aa jaye, is ke liye `out/unimax-visualizer.apk` rakh do (ya
+release se download kar lo). Na ho to page wo button khud chupa deta hai.
+
+> **Yaad rahe:** quick tunnel tab tak zinda hai jab tak ye command chal rahi hai
+> aur PC on hai. Ctrl+C ya PC band = link khatam. Hamesha ke liye chalne wala
+> link chahiye to neeche wala tareeqa dekho.
+
+## Hamesha ke liye public link (GitHub Pages)
+
+PC on rakhne ki zaroorat nahi, link kabhi nahi badalta, bilkul free:
+
+1. Repo ko **public** karo (free plan pe Pages private repo ke liye nahi hai)
+2. **Settings → Pages → Source: GitHub Actions**
+3. Actions se **Publish public site** workflow chalao
+
+Phir ye links hamesha ke liye mil jaate hain:
+
+```
+https://<user>.github.io/unimax-visualizer/
+https://<user>.github.io/unimax-visualizer/download.html
+```
+
+Jab tak Pages enable nahi hota, workflow deploy skip kar deta hai (build red nahi
+hoti). Repo public karne ka matlab hai ke **poora source code bhi public** ho
+jayega — ye faisla aap ka hai.
 
 ---
 

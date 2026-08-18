@@ -67,10 +67,37 @@ Us file ko WhatsApp/USB se phone pe bhejo aur browser se kholo — bina internet
 bhi chalegi. Phone mein browser ka **"Add to Home Screen"** dabao to icon home
 screen pe aa jaata hai aur app jaisi lagti hai.
 
-> **APK ke baare mein:** ye web app hai, Android app nahi — is liye `.apk` file
-> nahi banti. APK banane ke liye app ko Capacitor jaise wrapper mein daal kar
-> Android SDK se build karna parta hai. "Add to Home Screen" wala tareeqa isi
-> kaam ke liye kaafi hai aur turant chalta hai.
+---
+
+## Android APK
+
+App Capacitor ke saath wrap ki gayi hai, aur APK GitHub Actions par build hoti
+hai (wahan Android SDK pehle se hota hai). Har push par nayi APK ban kar
+`apk-latest` release pe chali jaati hai:
+
+```
+https://github.com/imykhan05/unimax-visualizer/releases/download/apk-latest/unimax-visualizer.apk
+```
+
+> Repo private hai, is liye ye link kholne ke liye GitHub login chahiye. Shopkeeper
+> ko dena ho to APK file seedha WhatsApp kar do, ya repo public kar do.
+
+**Phone pe install:** APK download karo → Settings mein us browser/file manager ke
+liye **"Install unknown apps"** allow karo → APK pe tap karo.
+
+Ye **debug build** hai — sideload ke liye theek hai, Play Store ke liye alag
+release signing key chahiye hogi.
+
+**Apne PC par build karna ho** (Android Studio ya SDK zaroori):
+
+```bash
+cd frontend
+npm install
+npm run build
+npx cap sync android
+cd android && ./gradlew assembleDebug
+# android/app/build/outputs/apk/debug/app-debug.apk
+```
 
 ---
 

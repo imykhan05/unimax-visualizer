@@ -52,6 +52,28 @@ Agar backend endpoints bhi mobile se chahiye, to Vite already `/api` ko
 
 ---
 
+## Mobile pe "App" ki tarah (single file build)
+
+Ye app poori tarah browser mein chalti hai, is liye ek hi HTML file mein pack ho
+jaati hai — na server, na internet:
+
+```bash
+cd frontend
+npm run build:single
+# frontend/dist-single/index.html  (~900 KB, bas ek file)
+```
+
+Us file ko WhatsApp/USB se phone pe bhejo aur browser se kholo — bina internet ke
+bhi chalegi. Phone mein browser ka **"Add to Home Screen"** dabao to icon home
+screen pe aa jaata hai aur app jaisi lagti hai.
+
+> **APK ke baare mein:** ye web app hai, Android app nahi — is liye `.apk` file
+> nahi banti. APK banane ke liye app ko Capacitor jaise wrapper mein daal kar
+> Android SDK se build karna parta hai. "Add to Home Screen" wala tareeqa isi
+> kaam ke liye kaafi hai aur turant chalta hai.
+
+---
+
 ## How to Use
 
 1. Image upload karo (ghar ya building ki photo)
@@ -136,7 +158,9 @@ POST /api/export-pdf      { original_image_base64, painted_image_base64,
 
 ```bash
 cd frontend
-npm test     # flood fill + LAB blend checks
+npm test          # flood fill + LAB blend checks
+npm run build     # production build -> dist/
+npm run build:single  # single self-contained HTML -> dist-single/
 ```
 
 Checks cover LAB round-trips, gradient walls, edge leaking, dilation rim aur texture

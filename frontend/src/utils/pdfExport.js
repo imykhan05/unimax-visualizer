@@ -2,6 +2,55 @@
 // phone over a Cloudflare tunnel just as well as on the shop PC.
 import { jsPDF } from 'jspdf';
 
+/**
+ * Hand a generated file to the user.
+ *
+ * Normally that is an anchor click. When the page is running inside a sandboxed
+ * host (the published web build), the host blocks page-initiated downloads and
+ * offers a save API instead — so try that first and fall back to the anchor.
+ * Resolves to the filename that was offered.
+ */
+async function saveFile(filename, blob) {
+  const host = typeof window !== 'undefined' ? window.claude : undefined;
+  if (host && typeof host.use === 'function') {
+    let downloads = null;
+    try {
+      downloads = await host.use('downloads');
+    } catch {
+      downloads = null;
+    }
+    if (downloads) {
+      try {
+        await downloads.save({ filename, data: blob });
+        return filename;
+      } catch (err) {
+        const code = err?.code;
+        if (code === 'declined') {
+          const e = new Error('Save cancel kar diya gaya.');
+          e.quiet = true;
+          throw e;
+        }
+        if (code === 'extension_not_enabled' || code === 'rejected_extension') {
+          throw new Error(`Is page pe ${filename.split('.').pop().toUpperCase()} save allowed nahi hai.`);
+        }
+        if (code === 'too_large') throw new Error('File 16MB se bari hai.');
+        if (code === 'rate_limited') throw new Error('Thora ruk kar dobara try karo.');
+        throw new Error(err?.message || 'File save nahi ho saki.');
+      }
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = url;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return filename;
+}
+
 const NAVY = '#0F1C2E';
 const MUTED = '#4A6A90';
 const BORDER = '#1E3050';
@@ -183,8 +232,7 @@ export async function exportReportPdf({
   }
 
   const filename = `unimax-report-${timestamp()}.pdf`;
-  doc.save(filename);
-  return filename;
+  return saveFile(filename, doc.output('blob'));
 }
 
 export function timestamp() {
@@ -195,11 +243,13 @@ export function timestamp() {
 
 export function downloadCanvasPng(canvas) {
   const filename = `unimax-preview-${timestamp()}.png`;
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = canvas.toDataURL('image/png');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  return filename;
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Canvas ko image mein convert nahi kar sake.'));
+        return;
+      }
+      saveFile(filename, blob).then(resolve, reject);
+    }, 'image/png');
+  });
 }

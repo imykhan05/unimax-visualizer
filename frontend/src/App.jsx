@@ -153,11 +153,18 @@ export default function App() {
   const zoomIn = useCallback(() => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2))), []);
   const zoomOut = useCallback(() => setZoom((z) => Math.max(0.25, +(z - 0.25).toFixed(2))), []);
 
-  const downloadPng = useCallback(() => {
+  const downloadPng = useCallback(async () => {
     const canvas = canvasApi.current?.getCanvas();
     if (!canvas) return;
-    const name = downloadCanvasPng(canvas);
-    notify(`${name} download ho gaya.`, 'success');
+    setBusy(true);
+    try {
+      const name = await downloadCanvasPng(canvas);
+      notify(`${name} save ho gaya.`, 'success');
+    } catch (err) {
+      if (!err.quiet) notify(err.message, 'error');
+    } finally {
+      setBusy(false);
+    }
   }, [notify]);
 
   const downloadPdf = useCallback(async () => {
@@ -172,9 +179,9 @@ export default function App() {
         customerName,
         notes,
       });
-      notify(`${name} download ho gaya.`, 'success');
+      notify(`${name} save ho gaya.`, 'success');
     } catch (err) {
-      notify(`PDF banane mein masla: ${err.message}`, 'error');
+      if (!err.quiet) notify(`PDF banane mein masla: ${err.message}`, 'error');
     } finally {
       setBusy(false);
     }

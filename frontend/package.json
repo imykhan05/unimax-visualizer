@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node test/utils.test.mjs",
-    "build:single": "vite build --config vite.config.single.js"
+    "build:single": "vite build --config vite.config.single.js",
+    "test:sample": "node scripts/test-sample.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.1",

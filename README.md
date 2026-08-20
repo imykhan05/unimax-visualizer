@@ -121,6 +121,67 @@ contrast pe check kiye gaye hain.
 
 ---
 
+## AI se safai (free, aap ke apne PC par)
+
+Recolouring rang badal sakti hai, magar **imarat ke saamne khara darakht nahi
+hata sakti** — us ke liye peeche ki deewar "banani" parti hai. Ye kaam ek
+diffusion model karta hai. Backend mein us ka bridge maujood hai.
+
+**Free hai, koi API key nahi, aur photo aap ke PC se bahar nahi jaati.**
+Zaroori: **NVIDIA graphics card** (8GB VRAM behtar). Bagair GPU ke har tasveer
+par kai minute lagenge.
+
+> **Ollama se ye kaam nahi hota.** Ollama *language* models chalata hai; kuch
+> tasveer *dekh* kar bata sakte hain ke ismein kya hai, magar koi bhi tasveer
+> **banata ya edit nahi karta**. Us ki API key bhi nahi hoti — wo local aur free
+> hai. Jo cheez chahiye wo Stable Diffusion hai.
+
+### 1. Stable Diffusion WebUI lagao (ek baar ka kaam)
+
+1. **AUTOMATIC1111 WebUI** install karo:
+   https://github.com/AUTOMATIC1111/stable-diffusion-webui
+   (ya **Forge**, wo tez hai aur wahi API deta hai)
+2. Ek **inpainting model** download karo — jaise
+   `sd-v1-5-inpainting` ya `SDXL inpainting` — aur `models/Stable-diffusion/`
+   mein rakho
+3. API on karo: `webui-user.bat` kholo aur ye line lagao:
+
+   ```
+   set COMMANDLINE_ARGS=--api
+   ```
+
+4. WebUI chalao. Ab `http://127.0.0.1:7860` par API sun rahi hai.
+
+### 2. Check karo ke bridge use dekh raha hai
+
+```bash
+cd backend && python main.py          # doosre terminal mein
+curl http://localhost:8000/api/ai/status
+```
+
+Chal raha ho to `"available": true` aur model ka naam aayega. Na chale to saaf
+wajah batata hai — koi khamoshi se nakami nahi.
+
+### 3. Endpoints
+
+```
+GET  /api/ai/status              → SD server chal raha hai ya nahi
+GET  /api/ai/presets             → tayyar prompts
+POST /api/ai/edit                → { image_base64, mask_base64, preset }
+                                   mask mein safed = ye hissa dobara banao
+```
+
+Presets do hain: `remove_clutter` (darakht, taarein, jangla hataana) aur
+`tidy_surroundings` (saamne ka hissa saaf karna). Prompt code mein rakhe hain
+taake har baar kisi ko likhna na parey.
+
+> Ye bridge **mock SD server** ke against test kiya gaya hai (`backend/tests/`),
+> asli GPU par nahi — build machine par graphics card nahi tha. Contract sahi
+> hai: request theek jaati hai, jawab theek parha jaata hai, aur tabdeeli sirf
+> mask ke andar rehti hai. Asli model ke saath pehli baar aap chala kar dekhein.
+
+---
+
 ## Android APK
 
 App Capacitor ke saath wrap ki gayi hai, aur APK GitHub Actions par build hoti

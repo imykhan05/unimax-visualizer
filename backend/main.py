@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Allow `python main.py` from inside backend/ as the README documents.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from routers import image, pdf  # noqa: E402
+from routers import ai, image, pdf  # noqa: E402
 
 VERSION = "1.0.0"
 
@@ -32,6 +32,7 @@ app.add_middleware(
 
 app.include_router(image.router)
 app.include_router(pdf.router)
+app.include_router(ai.router)
 
 
 @app.get("/api/health")

@@ -151,6 +151,80 @@ function keepMainComponents(mask, w, h, keepRatio = 0.18) {
 }
 
 /**
+ * 5x5 median filter over the LAB planes.
+ *
+ * Used only to prepare the sky search. A median erases structures thinner than
+ * its window — power lines, antenna masts, twigs — while leaving a roofline
+ * edge exactly where it was, which is the difference between a sky region that
+ * grows across the whole frame and one that stops dead at the first wire.
+ */
+function medianLab(lab, w, h, radius = 2) {
+  const out = new Float32Array(lab.length);
+  const buf = [];
+  for (let c = 0; c < 3; c++) {
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        buf.length = 0;
+        for (let dy = -radius; dy <= radius; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -radius; dx <= radius; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            buf.push(lab[(yy * w + xx) * 3 + c]);
+          }
+        }
+        buf.sort((m, k) => m - k);
+        out[(y * w + x) * 3 + c] = buf[buf.length >> 1];
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Sky as a *region*, not a colour.
+ *
+ * A colour test cannot hold across one photo's sky: the shaded side reads blue
+ * and the sunlit side washes out to near-white, so any threshold either misses
+ * half the sky or swallows a pale wall. What is reliably true is structural —
+ * sky touches the top edge and changes smoothly. So this grows from the top
+ * border, following the gradient the way the wall fill does, and stops where
+ * the photo steps sharply: a roofline, a branch, a wire.
+ */
+function growSky(lab, texture, w, h, texLow) {
+  const sky = new Uint8Array(w * h);
+  const stack = [];
+  const smoothEnough = texLow * 2.2;
+
+  for (let x = 0; x < w; x++) {
+    if (texture[x] <= smoothEnough) { sky[x] = 1; stack.push(x); }
+  }
+
+  const step = 9; // LAB distance allowed between neighbours
+  const stepSq = step * step;
+  while (stack.length) {
+    const i = stack.pop();
+    const x = i % w, y = (i / w) | 0;
+    const visit = (j, jy) => {
+      if (sky[j] || jy / h > 0.85) return;      // sky never reaches the ground
+      if (texture[j] > smoothEnough) return;    // an edge is where sky ends
+      const dL = lab[j * 3] - lab[i * 3];
+      const da = lab[j * 3 + 1] - lab[i * 3 + 1];
+      const db = lab[j * 3 + 2] - lab[i * 3 + 2];
+      if (dL * dL + da * da + db * db > stepSq) return;
+      sky[j] = 1;
+      stack.push(j);
+    };
+    if (x > 0) visit(i - 1, y);
+    if (x < w - 1) visit(i + 1, y);
+    if (y > 0) visit(i - w, y - 1);
+    if (y < h - 1) visit(i + w, y + 1);
+  }
+  return sky;
+}
+
+/**
  * Morphological closing: dilate then erode by the same radius.
  *
  * Hole filling alone cannot remove a power line, because a wire that crosses
@@ -228,6 +302,32 @@ export function detectZones(imageData, { maxRoles = 3 } = {}) {
   const sorted = Float32Array.from(texture).sort();
   const texMid = sorted[Math.floor(n * 0.55)];
   const texHigh = Math.max(3.5, sorted[Math.floor(n * 0.80)]);
+  // "Smooth" is relative to the photo's own grain, not an absolute number.
+  const texLow = Math.max(2.5, sorted[Math.floor(n * 0.30)]);
+
+  // Wires and masts are removed before the search, not fought during it.
+  const labSmooth = medianLab(lab, w, h, 2);
+  const textureSmooth = new Float32Array(n);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0, sq = 0, cnt = 0;
+      for (let dy = -2; dy <= 2; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= h) continue;
+        for (let dx = -2; dx <= 2; dx++) {
+          const xx = x + dx;
+          if (xx < 0 || xx >= w) continue;
+          const v = labSmooth[(yy * w + xx) * 3];
+          sum += v; sq += v * v; cnt++;
+        }
+      }
+      const m = sum / cnt;
+      textureSmooth[y * w + x] = Math.sqrt(Math.max(0, sq / cnt - m * m));
+    }
+  }
+  const sSorted = Float32Array.from(textureSmooth).sort();
+  const texLowSmooth = Math.max(1.2, sSorted[Math.floor(n * 0.35)]);
+  const grownSky = growSky(labSmooth, textureSmooth, w, h, texLowSmooth);
 
   const EXCLUDED = 0, CANDIDATE = 1;
   const kind = new Uint8Array(n);
@@ -240,11 +340,26 @@ export function detectZones(imageData, { maxRoles = 3 } = {}) {
       const t = texture[i];
       const yFrac = y / h;
 
-      // Sky: upper part of the frame, bright, smooth, and blue-leaning.
-      const isSky = yFrac < 0.72 && L > 62 && t < texHigh && B < 6 && A < 6;
-      // Foliage: green AND busy at either scale. The green *wall* is green but
-      // smooth at both, which is what separates them.
-      const isLeaf = A < -3 && (t > texHigh * 0.8 || textureWide[i] > texHigh * 0.9);
+      const isSky = grownSky[i] === 1;
+
+      // Foliage: dark, weakly yellow, and busy.
+      //
+      // Texture alone cannot carry this. Measured on a real facade, a painted
+      // wall scores 26-31 for coarse texture and a tree 32 — indistinguishable,
+      // because real walls have panel lines and shadows. What separates them is
+      // that foliage is much darker and far less yellow than paint: the wall
+      // sits at L 52-75 with b +13..+16, the canopy at L 26 with b +1. Keying
+      // on texture alone classified the whole green building as a tree.
+      // Deep green needs no texture test at all: no exterior wall paint sits at
+      // L 20 while still reading green. Sunlit foliage measured L 19.6 with
+      // barely any local variance, and slipped through a texture-only rule.
+      // The b* bound is what keeps a *shadowed* wall out of this: measured,
+      // foliage sits near b +9 while the same paint in shade stays b +13..+17.
+      const isDeepGreen = L < 30 && A < -4 && B < 10;
+      const isLeaf =
+        isDeepGreen ||
+        (A < -2 && B < 8 && L < 45 &&
+          (t > texHigh * 0.7 || textureWide[i] > texHigh * 0.8));
       // Road / ground: bottom band, low chroma.
       const isGround = yFrac > 0.9 && Math.abs(A) < 8 && Math.abs(B) < 12;
 
@@ -305,6 +420,14 @@ export function detectZones(imageData, { maxRoles = 3 } = {}) {
     }
   }
   for (let i = 0; i < n; i++) if (enclosed[i]) kind[i] = EXCLUDED;
+
+  // Counters for tuning: which stage removed what.
+  const stats0 = { sky: 0, leaf: 0, ground: 0, enclosed: 0, candidate: 0 };
+  for (let i = 0; i < n; i++) {
+    if (sky[i]) stats0.sky++;
+    if (leaf[i]) stats0.leaf++;
+    if (kind[i] === CANDIDATE) stats0.candidate++;
+  }
 
   const idx = [];
   const pts = [];
@@ -410,7 +533,22 @@ export function detectZones(imageData, { maxRoles = 3 } = {}) {
 
   const rank = { wall: 0, trim: 1, gate: 2 };
   roles.sort((a, b) => rank[a.role] - rank[b.role]);
-  return { roles, skyMask, skyPixels, debug: { w, h, kind, texMid, clusters: order.length } };
+  return {
+    roles,
+    skyMask,
+    skyPixels,
+    debug: {
+      w, h, kind, texMid, clusters: order.length,
+      stage: stats0,
+      total: n,
+      clusterStats: order.map((s) => ({
+        count: s.count,
+        pct: +((100 * s.count) / n).toFixed(1),
+        hex: `#${[s.sumR, s.sumG, s.sumB].map((v) => Math.round(v / s.count).toString(16).padStart(2, '0')).join('')}`,
+        cy: +(s.sumY / s.count / h).toFixed(2),
+      })),
+    },
+  };
 }
 
 export default detectZones;

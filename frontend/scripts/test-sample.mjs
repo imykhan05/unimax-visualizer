@@ -20,12 +20,18 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const sample = process.argv[2];
 const outDir = path.resolve(root, process.argv[3] || 'sample-out');
 
-if (!sample || !existsSync(path.resolve(root, sample))) {
+// Accept the path as typed (relative to where the command was run) or relative
+// to the repo root, so both `../samples/x.jpg` from frontend/ and
+// `samples/x.jpg` from the root work.
+const candidates = sample
+  ? [path.resolve(process.cwd(), sample), path.resolve(root, sample)]
+  : [];
+const src = candidates.find((c) => existsSync(c));
+if (!src) {
   console.error('Usage: node scripts/test-sample.mjs <image> [outDir]');
+  if (sample) console.error(`Not found as:\n  ${candidates.join('\n  ')}`);
   process.exit(1);
 }
-
-const src = path.resolve(root, sample);
 const served = path.join(root, 'frontend', 'public');
 await mkdir(served, { recursive: true });
 const servedName = `__sample${path.extname(src)}`;
@@ -131,7 +137,7 @@ for (const [i, b] of result.boards.entries()) {
   await save(`${String(i + 2).padStart(2, '0')}-${b.name.toLowerCase().replace(/\s+/g, '-')}.jpg`, b.png);
 }
 
-console.log(`image        ${sample}  (${result.size})`);
+console.log(`image        ${path.relative(root, src)}  (${result.size})`);
 console.log(`detection    ${result.detectMs} ms`);
 console.log(`sky          ${result.skyPct}% of frame`);
 for (const r of result.roles) {

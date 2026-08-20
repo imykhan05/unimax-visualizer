@@ -5,6 +5,7 @@ import Toolbar from './components/Toolbar.jsx';
 import AppliedPanel from './components/AppliedPanel.jsx';
 import ThemeSwitcher from './components/ThemeSwitcher.jsx';
 import SchemeStudio from './components/SchemeStudio.jsx';
+import AiCleanup from './components/AiCleanup.jsx';
 import { exportReportPdf, downloadCanvasPng } from './utils/pdfExport.js';
 import { THEMES, DEFAULT_THEME, ROTATE_MS, applyTheme } from './data/themes.js';
 
@@ -56,6 +57,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [studioOpen, setStudioOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [notes, setNotes] = useState('');
   const [themeKey, setThemeKey] = useState(
@@ -286,6 +288,7 @@ export default function App() {
         onGenerate={generate}
         onClearPins={clearPins}
         onAutoSchemes={() => setStudioOpen(true)}
+        onAiClean={() => setAiOpen(true)}
         themeControl={
           <ThemeSwitcher
             themeKey={themeKey}
@@ -390,6 +393,27 @@ export default function App() {
 
       {studioOpen && image && (
         <SchemeStudio image={image} onClose={() => setStudioOpen(false)} onNotify={notify} />
+      )}
+
+      {aiOpen && image && (
+        <AiCleanup
+          image={image}
+          onNotify={notify}
+          onClose={() => setAiOpen(false)}
+          onAccept={(cleaned) => {
+            // The AI-cleaned photo becomes the new working baseline — same
+            // reset as a fresh upload, since old zones/pins were drawn
+            // against pixels that photo no longer has.
+            setImage(cleaned);
+            setFileInfo((prev) => prev && { ...prev, width: cleaned.naturalWidth, height: cleaned.naturalHeight });
+            setZones([]);
+            setPins([]);
+            setRedoStack([]);
+            originalUrlRef.current = cleaned.src;
+            setAiOpen(false);
+            notify('AI se saaf ki hui photo ab active hai.', 'success');
+          }}
+        />
       )}
 
       {toast && <div className={`toast toast-${toast.kind}`}>{toast.message}</div>}

@@ -512,6 +512,24 @@ export function detectZones(imageData, { maxRoles = 3 } = {}) {
     }
   }
 
+  // Clutter mask for the AI cleanup path: foliage plus the gaps a canopy
+  // hides (branches seen through leaves, a fence tangled in a hedge). Dilated
+  // slightly so the regenerated patch overlaps real foliage pixels at its
+  // edge rather than butting against them — that seam is what a diffusion
+  // model blends away, and a mask with none to blend leaves a hard ring.
+  const clutterSmall = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (leaf[i] || enclosed[i]) clutterSmall[i] = 1;
+  const clutterGrown = closeMask(clutterSmall, w, h, 2);
+  const clutterMask = new Uint8Array(fullW * fullH);
+  let clutterPixels = 0;
+  for (let y = 0; y < fullH; y++) {
+    const syy = Math.min(h - 1, (y * sy) | 0);
+    for (let x = 0; x < fullW; x++) {
+      const sxx = Math.min(w - 1, (x * sx) | 0);
+      if (clutterGrown[syy * w + sxx]) { clutterMask[y * fullW + x] = 1; clutterPixels++; }
+    }
+  }
+
   const roles = [];
   for (const [role, rawSmall] of byRole) {
     const small = keepMainComponents(rawSmall, w, h);
@@ -537,6 +555,8 @@ export function detectZones(imageData, { maxRoles = 3 } = {}) {
     roles,
     skyMask,
     skyPixels,
+    clutterMask,
+    clutterPixels,
     debug: {
       w, h, kind, texMid, clusters: order.length,
       stage: stats0,

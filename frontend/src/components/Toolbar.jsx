@@ -23,6 +23,7 @@ export default function Toolbar({
   onGenerate,
   onClearPins,
   onAutoSchemes,
+  onAiClean,
   themeControl,
 }) {
   const inputRef = useRef(null);
@@ -74,6 +75,9 @@ export default function Toolbar({
             </button>
             <button className="btn btn-primary" onClick={onAutoSchemes} title="Ek photo se saari colour schemes">
               ✧ Auto Schemes
+            </button>
+            <button className="btn" onClick={onAiClean} title="Darakht, taarein, jangla AI se hataao">
+              ✨ AI Clean
             </button>
           </div>
 

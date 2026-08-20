@@ -185,6 +185,16 @@ ho jaate hain. Sky upar ki taraf roshan aur smooth hoti hai, road neeche
 be-rang. Jo bach jaye usay rang ke hisaab se cluster kar ke wall / trim / gate
 mein baanta jaata hai.
 
+**Sky saaf karo** (default on): aasman ko dobara bana deta hai — badal, bijli ki
+taarein, antenna sab ghayab. Ye inpainting nahi hai; aasman hi wo cheez hai
+jiski asli shakal bina andaza lagaye maloom hoti hai (upar se neeche ek smooth
+ramp), is liye usay dobara banate hi us par se guzarti har cheez mit jaati hai.
+
+> **Jo ye NAHI kar sakta:** imarat ke *saamne* khara darakht, jangla, ya gate ka
+> design badalna. Darakht hatane ke liye peeche ki deewar "bananni" parti hai —
+> wo sirf generative AI image model karta hai, recolouring nahi. Classical
+> inpainting (OpenCV) is par dhabba aur dhundlapan chhorta hai.
+
 > Auto-detect **pehla andaza** hai, mukammal nahi. Photo ajeeb ho to Band karke
 > khud pins laga lo — wo tareeqa hamesha kaam karta hai.
 

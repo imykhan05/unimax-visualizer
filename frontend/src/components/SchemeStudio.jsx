@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { detectZones } from '../utils/autoZones.js';
+import { cleanSky } from '../utils/skyCleanup.js';
 import { applyPaintColor } from '../utils/colorBlend.js';
 import { renderSchemeCard } from '../utils/schemeCard.js';
 import { COMBINATIONS, schemeShades } from '../data/combinations.js';
@@ -20,6 +21,7 @@ export default function SchemeStudio({ image, onClose, onNotify }) {
   const [roles, setRoles] = useState([]);
   const [cards, setCards] = useState([]);
   const [progress, setProgress] = useState(0);
+  const [tidySky, setTidySky] = useState(true);
   // A run token rather than a boolean: a remount (React runs effects twice in
   // development) or a re-run must invalidate only the *older* pass, not leave
   // the component permanently cancelled.
@@ -42,8 +44,14 @@ export default function SchemeStudio({ image, onClose, onNotify }) {
     const base = octx.getImageData(0, 0, oc.width, oc.height);
 
     await new Promise((r) => requestAnimationFrame(r));
-    const { roles: found } = detectZones(base);
+    const { roles: found, skyMask } = detectZones(base);
     if (!alive()) return;
+
+    // Tidy the sky once, on the base image, so every scheme inherits it.
+    if (tidySky && skyMask) {
+      cleanSky(base, skyMask);
+      octx.putImageData(base, 0, 0);
+    }
 
     if (!found.length) {
       setStage('empty');
@@ -87,7 +95,7 @@ export default function SchemeStudio({ image, onClose, onNotify }) {
       await new Promise((r) => setTimeout(r, 0));
     }
     setStage('done');
-  }, [image]);
+  }, [image, tidySky]);
 
   useEffect(() => { run(); }, [run]);
 
@@ -139,6 +147,15 @@ export default function SchemeStudio({ image, onClose, onNotify }) {
             </p>
           </div>
           <div className="studio-actions">
+            <label className="tidy-toggle" title="Aasman se badal, taarein aur antenna hata do">
+              <input
+                type="checkbox"
+                checked={tidySky}
+                onChange={(e) => setTidySky(e.target.checked)}
+                disabled={stage === 'detecting' || stage === 'painting'}
+              />
+              Sky saaf karo
+            </label>
             <button className="btn" onClick={run} disabled={stage === 'detecting' || stage === 'painting'}>
               ↻ Dobara
             </button>

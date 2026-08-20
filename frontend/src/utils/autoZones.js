@@ -151,6 +151,58 @@ function keepMainComponents(mask, w, h, keepRatio = 0.18) {
 }
 
 /**
+ * Morphological closing: dilate then erode by the same radius.
+ *
+ * Hole filling alone cannot remove a power line, because a wire that crosses
+ * the whole frame touches the border and so is never "enclosed". Closing
+ * bridges it regardless, and eroding afterwards puts the sky's real edge back.
+ */
+function closeMask(mask, w, h, radius) {
+  const pass = (src, want) => {
+    const out = new Uint8Array(src.length);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let hit = 0;
+        for (let dy = -radius; dy <= radius && !hit; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -radius; dx <= radius; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            if (src[yy * w + xx] === want) { hit = 1; break; }
+          }
+        }
+        out[y * w + x] = want === 1 ? (hit ? 1 : src[y * w + x]) : (hit ? 0 : 1);
+      }
+    }
+    return out;
+  };
+  return pass(pass(mask, 1), 0); // dilate, then erode
+}
+
+/** Fill holes in a mask that do not touch the image border. */
+function fillEnclosedHoles(mask, w, h) {
+  const outside = new Uint8Array(w * h);
+  const stack = [];
+  const push = (i) => {
+    if (!mask[i] && !outside[i]) { outside[i] = 1; stack.push(i); }
+  };
+  for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+  while (stack.length) {
+    const i = stack.pop();
+    const x = i % w, y = (i / w) | 0;
+    if (x > 0) push(i - 1);
+    if (x < w - 1) push(i + 1);
+    if (y > 0) push(i - w);
+    if (y < h - 1) push(i + w);
+  }
+  const out = new Uint8Array(mask.length);
+  for (let i = 0; i < mask.length; i++) out[i] = mask[i] || !outside[i] ? 1 : 0;
+  return out;
+}
+
+/**
  * Detect paintable surfaces.
  *
  * @returns {{roles: Array<{role, mask, pixels, meanHex, bounds}>, debug: object}}
@@ -180,6 +232,7 @@ export function detectZones(imageData, { maxRoles = 3 } = {}) {
   const EXCLUDED = 0, CANDIDATE = 1;
   const kind = new Uint8Array(n);
   const leaf = new Uint8Array(n);
+  const sky = new Uint8Array(n);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
@@ -197,6 +250,7 @@ export function detectZones(imageData, { maxRoles = 3 } = {}) {
 
       kind[i] = isSky || isLeaf || isGround ? EXCLUDED : CANDIDATE;
       if (isLeaf) leaf[i] = 1;
+      if (isSky) sky[i] = 1;
     }
   }
 
@@ -317,6 +371,24 @@ export function detectZones(imageData, { maxRoles = 3 } = {}) {
   }
 
   const sx = w / fullW, sy = h / fullH;
+
+  // Sky, upscaled and hole-filled. Wires, birds and antennas read as "not sky"
+  // because they are dark and busy, so they survive as holes inside it —
+  // closing those holes is what lets the cleanup erase them in one pass.
+  const skySmall = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (sky[i]) skySmall[i] = 1;
+  const skyClosed = closeMask(skySmall, w, h, 3);
+  const skyFilled = fillEnclosedHoles(skyClosed, w, h);
+  const skyMask = new Uint8Array(fullW * fullH);
+  let skyPixels = 0;
+  for (let y = 0; y < fullH; y++) {
+    const syy = Math.min(h - 1, (y * sy) | 0);
+    for (let x = 0; x < fullW; x++) {
+      const sxx = Math.min(w - 1, (x * sx) | 0);
+      if (skyFilled[syy * w + sxx]) { skyMask[y * fullW + x] = 1; skyPixels++; }
+    }
+  }
+
   const roles = [];
   for (const [role, rawSmall] of byRole) {
     const small = keepMainComponents(rawSmall, w, h);
@@ -338,7 +410,7 @@ export function detectZones(imageData, { maxRoles = 3 } = {}) {
 
   const rank = { wall: 0, trim: 1, gate: 2 };
   roles.sort((a, b) => rank[a.role] - rank[b.role]);
-  return { roles, debug: { w, h, kind, texMid, clusters: order.length } };
+  return { roles, skyMask, skyPixels, debug: { w, h, kind, texMid, clusters: order.length } };
 }
 
 export default detectZones;

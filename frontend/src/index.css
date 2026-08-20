@@ -780,3 +780,17 @@ button { font-family: inherit; cursor: pointer; }
   .studio-grid { grid-template-columns: 1fr; padding: 10px; }
   .role-note { display: none; }
 }
+
+.tidy-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 6px 13px;
+  cursor: pointer;
+}
+.tidy-toggle input { accent-color: var(--highlight); margin: 0; }

@@ -167,6 +167,27 @@ cd android && ./gradlew assembleDebug
 Pin galat lag gaya? Us pin pe click kar do, hat jayega — ya right panel se `✕`.
 `Clear Pins` sab pins hata deta hai.
 
+### Auto Schemes — ek photo, saari combinations
+
+Ek ek jagah click karne ka mann na ho to **Auto Schemes** dabao:
+
+1. App khud photo mein surfaces dhoondti hai — deewarein, trim bands, gate —
+   aur sky, darakht, road ko chhor deti hai
+2. Har ready-made scheme us photo pe lag jaati hai (12 schemes, ~3 second)
+3. Har scheme ka apna board banta hai: bara painted photo, neeche **BEFORE**
+   wali asli photo, aur saath shade ke naam + code
+4. Koi bhi board PNG mein download karo, ya **Sab PDF mein** — saare boards ek
+   PDF mein
+
+Surfaces kaise pehchani jaati hain: sirf rang se nahi — **texture** se. Deewar
+smooth hoti hai aur darakht dandanadar, is liye hara ghar aur hara darakht alag
+ho jaate hain. Sky upar ki taraf roshan aur smooth hoti hai, road neeche
+be-rang. Jo bach jaye usay rang ke hisaab se cluster kar ke wall / trim / gate
+mein baanta jaata hai.
+
+> Auto-detect **pehla andaza** hai, mukammal nahi. Photo ajeeb ho to Band karke
+> khud pins laga lo — wo tareeqa hamesha kaam karta hai.
+
 ### Tips
 
 - **Tolerance slider (20–80):** Zyada tolerance = zyada area select hoga. Agar wall ka
@@ -187,6 +208,7 @@ Pin galat lag gaya? Us pin pe click kar do, hat jayega — ya right panel se `�
 | Shades | Poori Unimax Wall Emulsion shade card — 28 shades, search by name ya code |
 | Painting | Pin lagao → Generate → flood fill + LAB blend, texture aur shadow preserved |
 | Multi-zone | Jitni marzi jaga, har jagah apni shade — sab ek saath apply |
+| Auto Schemes | Ek photo se 12 ready-made combinations, har ek ka apna board (PNG/PDF) |
 | Themes | 8 colour schemes, auto har 45 second badalti hain (pause bhi ho sakti hai) |
 | Undo/Redo | Full history, keyboard shortcuts ke saath |
 | Export | PNG canvas download + A4 PDF report (before/after + shade table) |

@@ -22,6 +22,7 @@ export default function Toolbar({
   pinCount,
   onGenerate,
   onClearPins,
+  onAutoSchemes,
   themeControl,
 }) {
   const inputRef = useRef(null);
@@ -70,6 +71,9 @@ export default function Toolbar({
             </button>
             <button className="btn" onClick={onClearPins} disabled={!pinCount}>
               Clear Pins
+            </button>
+            <button className="btn btn-primary" onClick={onAutoSchemes} title="Ek photo se saari colour schemes">
+              ✧ Auto Schemes
             </button>
           </div>
 

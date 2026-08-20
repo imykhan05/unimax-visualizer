@@ -10,7 +10,7 @@ import { jsPDF } from 'jspdf';
  * offers a save API instead — so try that first and fall back to the anchor.
  * Resolves to the filename that was offered.
  */
-async function saveFile(filename, blob) {
+export async function saveBlob(filename, blob) {
   const host = typeof window !== 'undefined' ? window.claude : undefined;
   if (host && typeof host.use === 'function') {
     let downloads = null;
@@ -232,7 +232,7 @@ export async function exportReportPdf({
   }
 
   const filename = `unimax-report-${timestamp()}.pdf`;
-  return saveFile(filename, doc.output('blob'));
+  return saveBlob(filename, doc.output('blob'));
 }
 
 export function timestamp() {
@@ -249,7 +249,7 @@ export function downloadCanvasPng(canvas) {
         reject(new Error('Canvas ko image mein convert nahi kar sake.'));
         return;
       }
-      saveFile(filename, blob).then(resolve, reject);
+      saveBlob(filename, blob).then(resolve, reject);
     }, 'image/png');
   });
 }

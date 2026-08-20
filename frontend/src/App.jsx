@@ -4,6 +4,7 @@ import Canvas from './components/Canvas.jsx';
 import Toolbar from './components/Toolbar.jsx';
 import AppliedPanel from './components/AppliedPanel.jsx';
 import ThemeSwitcher from './components/ThemeSwitcher.jsx';
+import SchemeStudio from './components/SchemeStudio.jsx';
 import { exportReportPdf, downloadCanvasPng } from './utils/pdfExport.js';
 import { THEMES, DEFAULT_THEME, ROTATE_MS, applyTheme } from './data/themes.js';
 
@@ -54,6 +55,7 @@ export default function App() {
   const [dragOver, setDragOver] = useState(false);
   const [toast, setToast] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [notes, setNotes] = useState('');
   const [themeKey, setThemeKey] = useState(
@@ -283,6 +285,7 @@ export default function App() {
         pinCount={pins.length}
         onGenerate={generate}
         onClearPins={clearPins}
+        onAutoSchemes={() => setStudioOpen(true)}
         themeControl={
           <ThemeSwitcher
             themeKey={themeKey}
@@ -383,6 +386,10 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {studioOpen && image && (
+        <SchemeStudio image={image} onClose={() => setStudioOpen(false)} onNotify={notify} />
       )}
 
       {toast && <div className={`toast toast-${toast.kind}`}>{toast.message}</div>}
